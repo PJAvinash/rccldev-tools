@@ -13,39 +13,6 @@ def read_file_as_string(filepath):
     with open(filepath, 'r', encoding='utf-8') as f:
         content = f.read()
     return content
-    data = []
-    regexstr1 = r"\s*(-?\d+)\s+(-?\d+)\s+(\S+)\s+(\S+)\s+(-?\d+)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+((-?\d+)|N/A)"
-    regexstr2 = r"\s*(-?\d+)\s+(-?\d+)\s+(\S+)\s+(-?\d+)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+(-?\d+(?:\.\d+)?)\s+((-?\d+)|N/A)"
-    pattern1 = re.compile(regexstr1)
-    pattern2 = re.compile(regexstr2)
-    for line in io.StringIO(rccl_tests_log_str):
-        # Skip lines that start with '##' or don't match the regex pattern
-        if line.startswith('##') or not (pattern1.match(line) or pattern2.match(line)):
-            continue
-
-        # Split line into columns (handle variable spacing)
-        columns = line.split()
-            
-        # Ensure the line has the expected number of fields
-        if len(columns) >= 12:
-            i = 1 if pattern1.match(line) else 0
-            entry = {
-                "size": np.int64(columns[0]),
-                "elements": np.int64(columns[1]),
-                "type": columns[2],
-                "redop": columns[2+i] if i else 'none',
-                "root": np.int64(columns[3+i]),
-                "op_time(us)": float(columns[4+i]),
-                "op_algbw(GB/s)": float(columns[5+i]),
-                "op_busbw(GB/s)": float(columns[6+i]),
-                "op_wrong": np.int64(columns[7+i]) if columns[7+i].isdigit() or (columns[7+i][1:].isdigit() if columns[7+i].startswith('-') else False) else 0,
-                "ip_time(us)": float(columns[8+i]),
-                "ip_algbw(GB/s)": float(columns[9+i]),
-                "ip_busbw(GB/s)": float(columns[10+i]),
-                "ip_wrong":np.int64(columns[11+i]) if columns[11+i].isdigit() or (columns[11+i][1:].isdigit() if columns[11+i].startswith('-') else False) else 0,
-            }
-        data.append(entry)          
-    return data
 
 def concat_dataframes_with_key(df_map: dict[str, pd.DataFrame], column_name: str) -> pd.DataFrame:
     """
@@ -259,9 +226,10 @@ def write_custom_excel_sheet(
     # Save workbook
     wb.save(full_path)
     
-if __name__ == "__main__":
-    folder_path = input("Enter the folder path: ")
-    output_excel = os.path.join(folder_path,"output.xlsx")  # Change if needed
+def getBKCText(BKCversion:str,IFWI:str,RCCLversion:str, HIPverison:str, ROCMversion:str)-> str:
+    return f"BKC:{BKCversion}\n IFWI:{IFWI}\n\n RCCL:{RCCLversion}\n HIP:{HIPverison}\n ROCm:{ROCMversion}"
+
+def generateXLSXReport(data_folder_path:str, output_dir:str,bkcinfo:str,cmdstr:str, TransferBenchBW:str):
     datasetdict = read_folder_to_DFs(folder_path)
     combinedDF = concat_dataframes_with_key(datasetdict,"coll")
     group_cols = ['size','elements','type','redop','root',"coll"]
@@ -271,5 +239,20 @@ if __name__ == "__main__":
     header_row_texts = ["size\n[H]","size\n[B]","count\n(elements)","type","redop","root","time\n(us)","algbw\n(GB/s)","bus\n(GB/s)","#wrong","time\n(us)","algbw\n(GB/s)","bus\n(GB/s)","#wrong"]
     for elem in split_data:
         data = add_human_readable_size_column(elem['df'].drop(columns=["coll"]),"size","size_hr")
-        write_custom_excel_sheet(elem['filename'], elem['sheetname'], data, "Temp", box1_text="BKC,ROCM,HIP,RCCL versions",box2_text="cmd",box3_text=f"1-node {elem['sheetname']}",box4_text="out-of-place\n(mean of 10 consecutive runs)",box5_text="in-place\n(mean of 10 consecutive runs)",TransferBenchBW = "319 GB/s",header_row_texts=header_row_texts)
-    
+        coll_name = elem['sheetname'].removesuffix(".txt").removesuffix(".log")
+        write_custom_excel_sheet(elem['filename'],coll_name, data,output_dir, box1_text=bkcinfo,box2_text=cmdstr,box3_text=f"1-node {coll_name}",box4_text="out-of-place\n(mean of 10 consecutive runs)",box5_text="in-place\n(mean of 10 consecutive runs)",TransferBenchBW = TransferBenchBW ,header_row_texts=header_row_texts)
+   
+if __name__ == "__main__":
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    default_output_dir = os.path.abspath(os.path.join(script_dir, "..", "..", "Temp"))
+    folder_path = input("Enter Data dir path: ")
+    output_dir = input(f"Enter Output dir path [default:{default_output_dir}]: ") or default_output_dir
+    bkcText =  input("Enter BKC: ") or ""
+    ifwiText = input("Enter IFWI: ") or ""
+    RcclVersion = input("Enter RCCL Version: ") or ""
+    HipVersion = input("Enter HIP Version: ") or ""
+    ROCmVersion = input("Enter ROCm Version: ") or ""
+    TransferBenchBW = input("Enter TransferBench BW: ") or "? GB/s"
+    box1_text = getBKCText(bkcText,ifwiText,RcclVersion,HipVersion,ROCmVersion)
+    box2_text = "${MPI_INSTALL_DIR}/bin/mpirun -np ${total} --bind-to numa -env NCCL_DEBUG=VERSION -env PATH=${MPI_INSTALL_DIR}/bin:${ROCM_PATH}/bin:$PATH -env LD_LIBRARY_PATH=${RCCL_INSTALL_DIR}/lib:${MPI_INSTALL_DIR}/lib:$LD_LIBRARY_PATH ${WORKDIR}/rccl-tests/build/${coll}_perf -b 1 -e 16G -f 2 -g 1 -d all -n 20 -w 5 -N 10"
+    generateXLSXReport(folder_path, output_dir,box1_text, box2_text,TransferBenchBW)

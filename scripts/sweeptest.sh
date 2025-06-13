@@ -63,7 +63,7 @@ m=8                             # assuming 8 GPUs per node
 total=$((1 * m))                # total number of MPI ranks (1 per GPU)
 echo "Total ranks: ${total}"    # print number of GPUs
 cd ${WORKDIR}
-mkdir perfdata
+mkdir -p perfdata
  
 for coll in all_reduce all_gather alltoall alltoallv broadcast gather reduce reduce_scatter scatter sendrecv
 do
