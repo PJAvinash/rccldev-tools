@@ -22,7 +22,7 @@ def write_to_log(message: str, file_path: str):
 
 if __name__ == "__main__":
     scratch_workdir = "/home/apotnuru/SWDEV-535655/Temp"
-    CLONE_RCCL = 0
+    CLONE_RCCL = 1
     CLONE_RT = 0
     BUILD_RCCL = 1
     BUILD_RT = 0
@@ -36,10 +36,11 @@ if __name__ == "__main__":
     if CLONE_RT:
         rccl_tests_path= clone_rccl_tests(scratch_workdir)
         
-    lastNCommits = get_last_n_commit_hashes(rccl_path, 200)
+    N = 10*17
+    lastNCommits = get_last_n_commit_hashes(rccl_path, N)
     results = []
     output_json = os.path.join(scratch_workdir,"results.json")
-    for idx, commit in enumerate(lastNCommits):
+    for idx, commit in enumerate(lastNCommits[0:10]):
         if BUILD_RCCL:
             librccl = build_rccl(rccl_path,commit_hash=commit)
         if BUILD_RT:
@@ -47,8 +48,9 @@ if __name__ == "__main__":
         rt_args = {"-n":"2"}
         outputlog = run_rccl_test("all_reduce",0,8,scratch_workdir,rccl_test_bin_subdir=rccltests_binaries_path,rt_args_dict=rt_args)
         data = parse_rccl_tests_output(outputlog)
-        results.append({ "index": idx,"commit": commit,"data": data})
-        write_to_log(outputlog,os.path.join(scratch_workdir,"backup",f"{commit}.log"))
+        if data and len(data):
+            results.append({ "index": idx,"commit": commit,"data": data})
+            write_to_log(outputlog,os.path.join(scratch_workdir,"backup",f"{commit}.log"))
         #checkpointing
         if idx%4 == 0:
             with open(output_json, "w") as f:

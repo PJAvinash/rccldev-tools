@@ -219,6 +219,7 @@ def run_rccl_test(
         ]
     else:
         cmd = [str(rccl_test_binary)]
+        env["NCCL_DEBUG"]="VERSION"
     for flag, val in merged_args.items():
         cmd.extend([flag, val])
     result = None

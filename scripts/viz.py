@@ -39,36 +39,52 @@ def plot_dataframe_3d_interactive(
     dropdown_z_cols: list,
     x_axis_title: str = None,
     y_axis_title: str = None,
-    plot_title: str = "Interactive 3D Plot"
+    plot_title: str = "Interactive 3D Plot",
+    connect_points: bool = True,
+    log_y: bool = True,
+    color_by_deviation: bool = True
 ):
-    """
-    Creates an interactive 3D plot from a Pandas DataFrame with a dropdown
-    to select the Z-axis.
-    (Same function as provided previously)
-    """
+    import numpy as np
+    import plotly.graph_objects as go
+
     if not all(col in df.columns for col in [x_col, y_col] + dropdown_z_cols):
         raise ValueError("One or more specified columns are not in the DataFrame.")
 
     x_axis_title = x_axis_title if x_axis_title is not None else x_col
-    y_axis_title = y_axis_title if y_axis_title is not None else y_col
+    y_axis_title = y_axis_title if y_axis_title is not None else (f"log({y_col})" if log_y else y_col)
+    y_data = np.log2(df[y_col]) if log_y else df[y_col]
 
     data_traces = []
+
     for i, col in enumerate(dropdown_z_cols):
         visible = [False] * len(dropdown_z_cols)
         visible[i] = True
 
+        z_data = df[col]
+        color_vals = None
+        if color_by_deviation:
+            # Group by (x, y) and calculate average z
+            group_max = df.groupby([y_col])[col].transform("max")
+            color_vals = group_max - z_data
+        else:
+            color_vals = z_data  # or just use a default constant if no coloring
+
         trace = go.Scatter3d(
             x=df[x_col],
-            y=df[y_col],
-            z=df[col],
-            mode='markers',
+            y=y_data,
+            z=z_data,
+            mode='lines+markers' if connect_points else 'markers',
             name=col,
-            marker=dict(size=5),
+            marker=dict(
+                size=3,
+                color=color_vals,
+                colorscale='thermal',
+                colorbar=dict(title="Deviation" if color_by_deviation else "Z"),
+                showscale=True
+            ),
             visible=visible[i]
         )
         data_traces.append(trace)
-
-    fig = go.Figure(data=data_traces)
 
     buttons = []
     for i, col in enumerate(dropdown_z_cols):
@@ -82,6 +98,8 @@ def plot_dataframe_3d_interactive(
                   {"scene.zaxis.title": col, "title.text": f"{plot_title}: {col}"}]
         )
         buttons.append(button)
+
+    fig = go.Figure(data=data_traces)
 
     fig.update_layout(
         updatemenus=[
@@ -104,11 +122,19 @@ def plot_dataframe_3d_interactive(
         title=plot_title,
         height=700
     )
+
     return fig
 
-# 1. Flatten the JSON data
+# No need for json or numpy imports inside this function,
+# as they are usually handled by the calling script/notebook.
+import json
 
-df_flattened = flatten_json_to_dataframe(json_input)
+def read_json(filepath):
+    with open(filepath, 'r') as f:
+        data = json.load(f)
+    return data
+df_flattened = flatten_json_to_dataframe(read_json("data.json"))
+print(df_flattened)
 # 2. Generate the Plotly figure
 plot_3d_figure = plot_dataframe_3d_interactive(
     df=df_flattened,
@@ -120,15 +146,11 @@ plot_3d_figure = plot_dataframe_3d_interactive(
     ],
     x_axis_title='Commit Hash',
     y_axis_title='Data Size (elements)',
-    plot_title='Performance Metrics vs. Commit and Data Size'
+    plot_title='Performance Metrics vs. Commit and Data Size',
+    log_y=True
 )
 
 # 3. Export to HTML
 output_html_file = "interactive_3d_plot.html"
 plot_3d_figure.write_html(output_html_file)
-
 print(f"Plot saved to {output_html_file}. Open this file in your web browser to view the interactive plot.")
-
-# You can also open it directly from Python (might open in your default browser)
-# import webbrowser
-# webbrowser.open(output_html_file)
