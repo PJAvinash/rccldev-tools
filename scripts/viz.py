@@ -1,6 +1,7 @@
 import pandas as pd
 import plotly.graph_objects as go
 import json
+import os
 
 # Assume you have the flatten_json_to_dataframe and plot_dataframe_3d_interactive functions defined as above
 
@@ -125,32 +126,32 @@ def plot_dataframe_3d_interactive(
 
     return fig
 
-# No need for json or numpy imports inside this function,
-# as they are usually handled by the calling script/notebook.
-import json
-
 def read_json(filepath):
     with open(filepath, 'r') as f:
         data = json.load(f)
     return data
-df_flattened = flatten_json_to_dataframe(read_json("data.json"))
-print(df_flattened)
-# 2. Generate the Plotly figure
-plot_3d_figure = plot_dataframe_3d_interactive(
-    df=df_flattened,
-    x_col='commit_hash',
-    y_col='size',
-    dropdown_z_cols=[
-        'op_time(us)', 'op_algbw(GB/s)', 'op_busbw(GB/s)',
-        'ip_time(us)', 'ip_algbw(GB/s)', 'ip_busbw(GB/s)'
-    ],
-    x_axis_title='Commit Hash',
-    y_axis_title='Data Size (elements)',
-    plot_title='Performance Metrics vs. Commit and Data Size',
-    log_y=True
-)
 
-# 3. Export to HTML
-output_html_file = "interactive_3d_plot.html"
-plot_3d_figure.write_html(output_html_file)
-print(f"Plot saved to {output_html_file}. Open this file in your web browser to view the interactive plot.")
+if __name__ == "__main__":
+    json_path = input("Enter the data Json path: ")
+    output_dir = input("Enter the html output dir: ")
+    df_flattened = flatten_json_to_dataframe(read_json(json_path))
+    print(df_flattened)
+    # 2. Generate the Plotly figure
+    plot_3d_figure = plot_dataframe_3d_interactive(
+        df=df_flattened,
+        x_col='commit_hash',
+        y_col='size',
+        dropdown_z_cols=[
+            'op_time(us)', 'op_algbw(GB/s)', 'op_busbw(GB/s)',
+            'ip_time(us)', 'ip_algbw(GB/s)', 'ip_busbw(GB/s)'
+        ],
+        x_axis_title='Commit Hash',
+        y_axis_title='DataSize log2(#elements)',
+        plot_title='Performance Metrics vs. Commit and Data Size',
+        log_y=True
+    )
+
+    # 3. Export to HTML
+    output_html_file = "interactive_3d_plot.html"
+    plot_3d_figure.write_html(os.path.join(output_dir,output_html_file))
+    print(f"Plot saved to {output_html_file}. Open this file in your web browser to view the interactive plot.")

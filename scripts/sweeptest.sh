@@ -2,7 +2,7 @@
 ROCM_PATH=/opt/rocm
  
 ## to use pre-installed MPI, change `build_mpi` to 0 and ensure that libmpi.so exists at `MPI_INSTALL_DIR/lib`.
-build_mpi=0
+build_mpi=1
 MPI_INSTALL_DIR=/opt/mpich
  
 ## to use pre-installed RCCL, change `build_rccl` to 0 and ensure that librccl.so exists at `RCCL_INSTALL_DIR/lib`.
@@ -11,6 +11,7 @@ RCCL_INSTALL_DIR=${ROCM_PATH}
  
  #ls /usr
 WORKDIR=$PWD/temp
+mkdir -p $WORKDIR
  
  
 ## building mpich
@@ -33,13 +34,13 @@ then
 fi
  
  
-## building rccl (develop)
+## building rccl (mainline)
 if [ ${build_rccl} -eq 1 ]
 then
     cd ${WORKDIR}
     if [ ! -d rccl ]
     then
-        git clone https://github.com/ROCm/rccl -b develop
+        git clone https://github.com/ROCm/rccl -b mainline
         cd rccl
         ./install.sh -l
     fi
