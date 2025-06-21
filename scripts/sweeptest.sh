@@ -9,8 +9,8 @@ MPI_INSTALL_DIR=/opt/mpich
 build_rccl=1
 RCCL_INSTALL_DIR=${ROCM_PATH}
  
- #ls /usr
-WORKDIR=$PWD/temp
+#Take the name from user use the following default
+WORKDIR="$PWD/temp"
 mkdir -p $WORKDIR
  
  
@@ -63,10 +63,15 @@ m=8                             # assuming 8 GPUs per node
 total=$((1 * m))                # total number of MPI ranks (1 per GPU)
 echo "Total ranks: ${total}"    # print number of GPUs
 cd ${WORKDIR}
-mkdir -p perfdata
+# Get today's UTC date in yyyy_MM_dd format
+DATE_UTC=$(date -u +"%Y_%m_%d")
+# Set performance data directory name
+PERF_DATA_DIR="perfdata_${DATE_UTC}"
+
+mkdir -p ${PERF_DATA_DIR}
  
 for coll in all_reduce all_gather alltoall alltoallv broadcast gather reduce reduce_scatter scatter sendrecv
 do
     # using MPICH; comment next line if using OMPI
-    ${MPI_INSTALL_DIR}/bin/mpirun -np ${total} --bind-to numa -env NCCL_DEBUG=VERSION -env PATH=${MPI_INSTALL_DIR}/bin:${ROCM_PATH}/bin:$PATH -env LD_LIBRARY_PATH=${RCCL_INSTALL_DIR}/lib:${MPI_INSTALL_DIR}/lib:$LD_LIBRARY_PATH ${WORKDIR}/rccl-tests/build/${coll}_perf -b 1 -e 16G -f 2 -g 1 -d all -n 20 -w 5 -N 10 2>&1 | tee ${WORKDIR}/perfdata/${coll}.txt
+    ${MPI_INSTALL_DIR}/bin/mpirun -np ${total} --bind-to numa -env NCCL_DEBUG=VERSION -env PATH=${MPI_INSTALL_DIR}/bin:${ROCM_PATH}/bin:$PATH -env LD_LIBRARY_PATH=${RCCL_INSTALL_DIR}/lib:${MPI_INSTALL_DIR}/lib:$LD_LIBRARY_PATH ${WORKDIR}/rccl-tests/build/${coll}_perf -b 1 -e 16G -f 2 -g 1 -d all -n 20 -w 5 -N 10 2>&1 | tee ${WORKDIR}/${PERF_DATA_DIR}/${coll}.txt
 done
