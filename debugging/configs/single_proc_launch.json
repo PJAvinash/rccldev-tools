@@ -1,0 +1,23 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug single process mode",
+            "program": "${workspaceFolder}/temp/rocm-systems/projects/rccl-tests/build/all_reduce_perf",
+            "args": ["-b","8","-e","128M","-f","2","-g","8"],
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "LD_LIBRARY_PATH": "${workspaceFolder}/temp/rocm-systems/projects/rccl/build/debug",
+                "NCCL_DEBUG": "INFO",
+                "NCCL_DEBUG_SUBSYS":"INIT,COLL",
+                "HIP_VISIBLE_DEVICES":"0,1,2,3,4,5,6,7",
+                "NCCL_IB_HCA":"bnxt_re0,bnxt_re1,bnxt_re2,bnxt_re3,bnxt_re4,bnxt_re5,bnxt_re6,bnxt_re7",
+                "NCCL_IB_ENABLE":"1",
+                "NCCL_NET_PLUGIN":"ib",
+                "NCCL_IB_MERGE_NICS":"1"
+            }
+        }
+    ]
+}
